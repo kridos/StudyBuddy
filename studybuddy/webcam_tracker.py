@@ -1,9 +1,14 @@
+import os
 import time
 from typing import Optional
 
 import cv2
 
 from .detection import DetectionState
+
+# Reduce MediaPipe/TFLite logging noise.
+os.environ.setdefault("GLOG_minloglevel", "2")
+os.environ.setdefault("TF_CPP_MIN_LOG_LEVEL", "2")
 
 
 def _get_facemesh_constructor():
@@ -17,14 +22,13 @@ def _get_facemesh_constructor():
     except Exception:
         pass
 
-    # Fallback for environments where `mediapipe.solutions` is not exposed at top-level.
     try:
         from mediapipe.python.solutions.face_mesh import FaceMesh  # type: ignore
 
         return FaceMesh
-    except Exception as exc:  # pragma: no cover - environment dependent
+    except Exception as exc:
         raise RuntimeError(
-            "MediaPipe FaceMesh is unavailable. Reinstall with a compatible version, e.g. `pip install mediapipe==0.10.14`."
+            "MediaPipe FaceMesh is unavailable. Reinstall with `pip install mediapipe==0.10.14`."
         ) from exc
 
 
@@ -42,6 +46,7 @@ class WebcamTracker:
             min_detection_confidence=0.5,
             min_tracking_confidence=0.5,
         )
+        self.last_frame = None
 
     def close(self) -> None:
         if self.cap:
@@ -54,6 +59,7 @@ class WebcamTracker:
         if not ok:
             return None
 
+        self.last_frame = frame.copy()
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         result = self.face_mesh.process(frame_rgb)
         now_ts = time.time()
@@ -70,3 +76,11 @@ class WebcamTracker:
         downward_head = (nose_tip.y - eye_center_y) > 0.12
 
         return DetectionState(face_present=True, downward_head=downward_head), now_ts
+
+    def preview_frame(self, status_text: str) -> None:
+        if self.last_frame is None:
+            return
+        frame = self.last_frame.copy()
+        cv2.putText(frame, f"Status: {status_text}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+        cv2.imshow("StudyBuddy Webcam", frame)
+        cv2.waitKey(1)

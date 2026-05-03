@@ -6,6 +6,7 @@ def run() -> None:
     try:
         import tkinter as tk
         from tkinter import messagebox
+        import cv2
     except ModuleNotFoundError as exc:
         missing = getattr(exc, "name", "")
         if missing == "_tkinter" or "tkinter" in str(exc).lower():
@@ -46,7 +47,6 @@ def run() -> None:
             tk.Label(self.root, textvariable=self.timer_text, font=("Arial", 18)).pack(pady=4)
             tk.Label(self.root, textvariable=self.status_text, font=("Arial", 12)).pack(pady=4)
             tk.Label(self.root, textvariable=self.distraction_text, font=("Arial", 11)).pack(pady=2)
-
             self.toggle_btn = tk.Button(self.root, text="Start Session", command=self.toggle_session)
             self.toggle_btn.pack(pady=12)
 
@@ -77,20 +77,16 @@ def run() -> None:
             if self.webcam:
                 self.webcam.close()
                 self.webcam = None
+            cv2.destroyAllWindows()
 
             self.toggle_btn.config(text="Start Session")
             self.status_text.set("Idle")
-
             if record:
-                messagebox.showinfo(
-                    "Session Saved",
-                    f"Duration: {record.duration_minutes} min\nDistractions: {record.distraction_events}",
-                )
+                messagebox.showinfo("Session Saved", f"Duration: {record.duration_minutes} min\nDistractions: {record.distraction_events}")
 
         def _tick(self) -> None:
             if not self.polling:
                 return
-
             elapsed = self.session.elapsed_seconds()
             mins, secs = divmod(elapsed, 60)
             self.timer_text.set(f"{mins:02d}:{secs:02d}")
@@ -108,6 +104,7 @@ def run() -> None:
                         self.status_text.set("Distracted")
                     else:
                         self.status_text.set("Focused")
+                    self.webcam.preview_frame(self.status_text.get())
 
             self.root.after(500, self._tick)
 
