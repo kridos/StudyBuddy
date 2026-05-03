@@ -1,1 +1,50 @@
-# StudyBuddy
+# StudyBuddy AI (MVP)
+
+Local-first desktop app to track study sessions and detect basic distraction via webcam.
+
+## Features (MVP)
+
+- Start/stop study sessions
+- Local JSON session logging with:
+  - date
+  - duration_minutes
+  - distraction_events
+- Webcam monitoring with MediaPipe:
+  - face present / missing
+  - simple head-down heuristic
+- Distraction alerts with cooldown and randomized messages
+- Minimal Tkinter UI showing:
+  - session timer
+  - focused/distracted status
+  - live distraction counter
+
+## Project Structure
+
+- `main.py` - app entrypoint
+- `studybuddy/session_manager.py` - session lifecycle + JSON storage
+- `studybuddy/webcam_tracker.py` - OpenCV + MediaPipe state extraction
+- `studybuddy/detection.py` - distraction heuristics
+- `studybuddy/alert_manager.py` - alert randomization + cooldown
+- `studybuddy/ui.py` - Tkinter app
+- `studybuddy/data/sessions.json` - generated session storage
+
+## Run Locally
+
+1. Create and activate a virtual environment.
+2. Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+3. Start app:
+
+```bash
+python main.py
+```
+
+## Notes
+
+- This MVP runs fully local (no cloud APIs).
+- Alert playback defaults to console messages unless you pass a sound file path into `AlertManager`.
+- Webcam is active only during a running session.
