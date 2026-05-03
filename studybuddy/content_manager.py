@@ -24,19 +24,6 @@ class ContentManager:
         )
         self._write(payload)
 
-    def generate_flashcards_placeholder(self, source_text: str) -> list[dict]:
-        words = [w.strip('.,!?') for w in source_text.split() if len(w.strip('.,!?')) > 4]
-        unique = []
-        for w in words:
-            lw = w.lower()
-            if lw not in unique:
-                unique.append(lw)
-            if len(unique) == 3:
-                break
-        return [{"question": f"Define: {w}", "answer": "(Fill this in while reviewing)"} for w in unique] or [
-            {"question": "Main idea?", "answer": "Write a concise summary."}
-        ]
-
     def _read(self) -> dict:
         return json.loads(self.path.read_text(encoding="utf-8"))
 

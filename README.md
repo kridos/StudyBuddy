@@ -68,3 +68,11 @@ python main.py
 
 - If you later add non-local providers (e.g., Claude), place keys in a local `.env` file.
 - `.env` is git-ignored; use `.env.example` as the template.
+
+
+## Optional Provider Interface
+
+- StudyBuddy uses a provider interface for flashcard generation.
+- Default behavior is **local-first** (`LocalProvider`) and works fully offline.
+- If `CLAUDE_API_KEY` is present in `.env`, StudyBuddy switches to a `ClaudeProvider` integration point.
+- Current Claude provider is a safe placeholder hook for future secure API integration.

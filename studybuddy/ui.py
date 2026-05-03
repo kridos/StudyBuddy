@@ -20,6 +20,7 @@ def run() -> None:
 
     from .activity_tracker import ActivityTracker
     from .alert_manager import AlertManager
+    from .ai_provider import load_provider
     from .content_manager import ContentManager
     from .detection import DistractionDetector
     from .session_manager import SessionManager
@@ -37,6 +38,7 @@ def run() -> None:
             self.webcam: WebcamTracker | None = None
             self.activity: ActivityTracker | None = None
             self.content = ContentManager()
+            self.provider = load_provider()
 
             self.status_text = tk.StringVar(value="Idle")
             self.timer_text = tk.StringVar(value="00:00")
@@ -74,7 +76,7 @@ def run() -> None:
             if not text:
                 self.content_status.set("Enter text to create flashcards")
                 return
-            cards = self.content.generate_flashcards_placeholder(text)
+            cards = self.provider.generate_flashcards(text)
             self.content.add_flashcards(text, cards)
             self.notes_entry.delete(0, tk.END)
             self.content_status.set(f"Saved {len(cards)} flashcards")
