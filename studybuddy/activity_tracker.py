@@ -1,9 +1,11 @@
 import time
-from pynput import keyboard, mouse
 
 
 class ActivityTracker:
     def __init__(self) -> None:
+        # Lazy import to avoid platform-specific startup crashes before session start.
+        from pynput import keyboard, mouse
+
         self.last_input_ts = time.time()
         self._mouse_listener = mouse.Listener(on_move=self._touch, on_click=self._touch, on_scroll=self._touch)
         self._keyboard_listener = keyboard.Listener(on_press=self._touch)

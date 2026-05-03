@@ -2,8 +2,6 @@ import os
 import time
 from typing import Optional
 
-import cv2
-
 from .detection import DetectionState
 
 # Reduce MediaPipe/TFLite logging noise.
@@ -34,7 +32,11 @@ def _get_facemesh_constructor():
 
 class WebcamTracker:
     def __init__(self, camera_index: int = 0) -> None:
-        self.cap = cv2.VideoCapture(camera_index)
+        # Lazy import OpenCV to avoid startup crashes on some macOS envs.
+        import cv2
+
+        self.cv2 = cv2
+        self.cap = self.cv2.VideoCapture(camera_index)
         if not self.cap.isOpened():
             raise RuntimeError("Could not open webcam. Check camera permissions or camera index.")
 
@@ -46,7 +48,6 @@ class WebcamTracker:
             min_detection_confidence=0.5,
             min_tracking_confidence=0.5,
         )
-        self.last_frame = None
 
     def close(self) -> None:
         if self.cap:
@@ -59,8 +60,7 @@ class WebcamTracker:
         if not ok:
             return None
 
-        self.last_frame = frame.copy()
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        frame_rgb = self.cv2.cvtColor(frame, self.cv2.COLOR_BGR2RGB)
         result = self.face_mesh.process(frame_rgb)
         now_ts = time.time()
 
@@ -79,8 +79,3 @@ class WebcamTracker:
         looking_away = abs(nose_tip.x - eye_center_x) > 0.08
 
         return DetectionState(face_present=True, downward_head=downward_head, looking_away=looking_away), now_ts
-
-
-    def preview_frame(self, status_text: str) -> None:
-        """Preview disabled for stability on some macOS Python/OpenCV builds."""
-        return
