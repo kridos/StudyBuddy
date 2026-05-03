@@ -25,7 +25,7 @@ Local-first desktop app to track study sessions and detect basic distraction via
 - `studybuddy/webcam_tracker.py` - OpenCV + MediaPipe state extraction
 - `studybuddy/detection.py` - distraction heuristics
 - `studybuddy/alert_manager.py` - alert randomization + cooldown
-- `studybuddy/ui.py` - Tkinter app and Tk fallback guidance
+- `studybuddy/ui.py` - Tkinter app
 - `studybuddy/data/sessions.json` - generated session storage
 
 ## Run Locally
@@ -42,12 +42,6 @@ pip install -r requirements.txt
 ```bash
 python main.py
 ```
-
-## Important: Tkinter on macOS/Linux
-
-- `tkinter` is **not** installed from pip (`pip install tk` / `pip install tkinter` will not fix `_tkinter`).
-- Tkinter is part of your **Python build**.
-- If you get `ModuleNotFoundError: No module named '_tkinter'`, install a Python distribution that includes Tk (for example python.org installer on macOS), then recreate your venv and reinstall requirements.
 
 ## Notes
 
