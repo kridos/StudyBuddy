@@ -6,7 +6,6 @@ def run() -> None:
     try:
         import tkinter as tk
         from tkinter import messagebox
-        import cv2
     except ModuleNotFoundError as exc:
         missing = getattr(exc, "name", "")
         if missing == "_tkinter" or "tkinter" in str(exc).lower():
@@ -21,6 +20,7 @@ def run() -> None:
 
     from .activity_tracker import ActivityTracker
     from .alert_manager import AlertManager
+    from .content_manager import ContentManager
     from .detection import DistractionDetector
     from .session_manager import SessionManager
     from .webcam_tracker import WebcamTracker
@@ -36,10 +36,12 @@ def run() -> None:
             self.detector = DistractionDetector(missing_face_threshold=10.0, downward_threshold=10.0)
             self.webcam: WebcamTracker | None = None
             self.activity: ActivityTracker | None = None
+            self.content = ContentManager()
 
             self.status_text = tk.StringVar(value="Idle")
             self.timer_text = tk.StringVar(value="00:00")
             self.distraction_text = tk.StringVar(value="Distractions: 0")
+            self.content_status = tk.StringVar(value="")
 
             self._build_ui()
             self.polling = False
@@ -50,7 +52,32 @@ def run() -> None:
             tk.Label(self.root, textvariable=self.status_text, font=("Arial", 12)).pack(pady=4)
             tk.Label(self.root, textvariable=self.distraction_text, font=("Arial", 11)).pack(pady=2)
             self.toggle_btn = tk.Button(self.root, text="Start Session", command=self.toggle_session)
-            self.toggle_btn.pack(pady=12)
+            self.toggle_btn.pack(pady=8)
+
+            self.notes_entry = tk.Entry(self.root, width=34)
+            self.notes_entry.pack(pady=3)
+            tk.Button(self.root, text="Save Note", command=self.save_note).pack(pady=2)
+            tk.Button(self.root, text="Make Flashcards", command=self.make_flashcards).pack(pady=2)
+            tk.Label(self.root, textvariable=self.content_status, font=("Arial", 9)).pack(pady=2)
+
+        def save_note(self) -> None:
+            text = self.notes_entry.get().strip()
+            if not text:
+                self.content_status.set("Enter note text first")
+                return
+            self.content.add_note(text)
+            self.notes_entry.delete(0, tk.END)
+            self.content_status.set("Note saved to content_log.json")
+
+        def make_flashcards(self) -> None:
+            text = self.notes_entry.get().strip()
+            if not text:
+                self.content_status.set("Enter text to create flashcards")
+                return
+            cards = self.content.generate_flashcards_placeholder(text)
+            self.content.add_flashcards(text, cards)
+            self.notes_entry.delete(0, tk.END)
+            self.content_status.set(f"Saved {len(cards)} flashcards")
 
         def toggle_session(self) -> None:
             if not self.session.is_active():
@@ -84,7 +111,6 @@ def run() -> None:
             if self.activity:
                 self.activity.stop()
                 self.activity = None
-            cv2.destroyAllWindows()
 
             self.toggle_btn.config(text="Start Session")
             self.status_text.set("Idle")
@@ -116,10 +142,6 @@ def run() -> None:
                         self.status_text.set("Distracted")
                     else:
                         self.status_text.set("Focused")
-                    display = self.status_text.get()
-                    if state.idle_seconds > self.detector.idle_threshold:
-                        display += " | Idle"
-                    self.webcam.preview_frame(display)
                 else:
                     self.status_text.set("Distracted")
 

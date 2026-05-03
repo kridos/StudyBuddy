@@ -80,10 +80,7 @@ class WebcamTracker:
 
         return DetectionState(face_present=True, downward_head=downward_head, looking_away=looking_away), now_ts
 
+
     def preview_frame(self, status_text: str) -> None:
-        if self.last_frame is None:
-            return
-        frame = self.last_frame.copy()
-        cv2.putText(frame, f"Status: {status_text}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
-        cv2.imshow("StudyBuddy Webcam", frame)
-        cv2.waitKey(1)
+        """Preview disabled for stability on some macOS Python/OpenCV builds."""
+        return

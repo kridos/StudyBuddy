@@ -56,3 +56,15 @@ python main.py
 - Webcam is active only during a running session.
 - MediaPipe is pinned to `0.10.14` because newer/incompatible environment builds may not expose `mediapipe.solutions` consistently.
 
+
+
+## Notes / Flashcards Logging
+
+- Use the in-app input to save notes and generate placeholder flashcards.
+- All generated content is stored locally in `studybuddy/data/content_log.json`.
+- No cloud dependency is required for this logging flow.
+
+## Optional .env for API keys
+
+- If you later add non-local providers (e.g., Claude), place keys in a local `.env` file.
+- `.env` is git-ignored; use `.env.example` as the template.
