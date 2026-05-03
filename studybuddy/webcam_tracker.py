@@ -65,7 +65,7 @@ class WebcamTracker:
         now_ts = time.time()
 
         if not result.multi_face_landmarks:
-            return DetectionState(face_present=False, downward_head=False), now_ts
+            return DetectionState(face_present=False, downward_head=False, looking_away=False), now_ts
 
         landmarks = result.multi_face_landmarks[0].landmark
         left_eye = landmarks[33]
@@ -75,7 +75,10 @@ class WebcamTracker:
         eye_center_y = (left_eye.y + right_eye.y) / 2.0
         downward_head = (nose_tip.y - eye_center_y) > 0.12
 
-        return DetectionState(face_present=True, downward_head=downward_head), now_ts
+        eye_center_x = (left_eye.x + right_eye.x) / 2.0
+        looking_away = abs(nose_tip.x - eye_center_x) > 0.08
+
+        return DetectionState(face_present=True, downward_head=downward_head, looking_away=looking_away), now_ts
 
     def preview_frame(self, status_text: str) -> None:
         if self.last_frame is None:

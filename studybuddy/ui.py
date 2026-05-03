@@ -19,6 +19,7 @@ def run() -> None:
             return
         raise
 
+    from .activity_tracker import ActivityTracker
     from .alert_manager import AlertManager
     from .detection import DistractionDetector
     from .session_manager import SessionManager
@@ -34,6 +35,7 @@ def run() -> None:
             self.alerts = AlertManager(cooldown_seconds=20)
             self.detector = DistractionDetector(missing_face_threshold=10.0, downward_threshold=10.0)
             self.webcam: WebcamTracker | None = None
+            self.activity: ActivityTracker | None = None
 
             self.status_text = tk.StringVar(value="Idle")
             self.timer_text = tk.StringVar(value="00:00")
@@ -58,6 +60,8 @@ def run() -> None:
 
         def start_session(self) -> None:
             self.session.start_session()
+            self.activity = ActivityTracker()
+            self.activity.start()
             try:
                 self.webcam = WebcamTracker()
             except Exception as exc:
@@ -77,6 +81,9 @@ def run() -> None:
             if self.webcam:
                 self.webcam.close()
                 self.webcam = None
+            if self.activity:
+                self.activity.stop()
+                self.activity = None
             cv2.destroyAllWindows()
 
             self.toggle_btn.config(text="Start Session")
@@ -99,6 +106,7 @@ def run() -> None:
                 payload = self.webcam.get_state()
                 if payload:
                     state, now_ts = payload
+                    state.idle_seconds = self.activity.idle_seconds() if self.activity else 0.0
                     distracted, reason = self.detector.update(state, now_ts)
                     if distracted:
                         msg = self.alerts.trigger_alert()
@@ -108,7 +116,10 @@ def run() -> None:
                         self.status_text.set("Distracted")
                     else:
                         self.status_text.set("Focused")
-                    self.webcam.preview_frame(self.status_text.get())
+                    display = self.status_text.get()
+                    if state.idle_seconds > self.detector.idle_threshold:
+                        display += " | Idle"
+                    self.webcam.preview_frame(display)
                 else:
                     self.status_text.set("Distracted")
 
