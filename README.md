@@ -76,3 +76,9 @@ python main.py
 - Default behavior is **local-first** (`LocalProvider`) and works fully offline.
 - If `CLAUDE_API_KEY` is present in `.env`, StudyBuddy switches to a `ClaudeProvider` integration point.
 - Current Claude provider is a safe placeholder hook for future secure API integration.
+
+
+## Stability Note
+
+- StudyBuddy intentionally avoids global keyboard/mouse hooks on macOS due to OS-level instability and permission issues.
+- Focus detection uses webcam/session signals only in this version.
