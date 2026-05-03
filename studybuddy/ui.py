@@ -2,7 +2,6 @@ from __future__ import annotations
 
 
 def run() -> None:
-    """Run the app with Tkinter if available, otherwise print setup guidance."""
     try:
         import tkinter as tk
         from tkinter import messagebox
@@ -11,10 +10,6 @@ def run() -> None:
         if missing == "_tkinter" or "tkinter" in str(exc).lower():
             print("StudyBuddy AI requires a Python build that includes Tk support.")
             print("Detected missing module: _tkinter")
-            print("\nmacOS quick fix options:")
-            print("1) Install python.org Python (includes Tk) and recreate your venv.")
-            print("2) If using Homebrew Python, install Tcl/Tk and rebuild/reinstall Python with Tk support.")
-            print("\nThen run: python main.py")
             return
         raise
 
@@ -30,7 +25,8 @@ def run() -> None:
         def __init__(self, root: tk.Tk) -> None:
             self.root = root
             self.root.title("StudyBuddy AI")
-            self.root.geometry("320x220")
+            self.root.geometry("460x420")
+            self.root.configure(bg="#f3f6fb")
 
             self.session = SessionManager()
             self.alerts = AlertManager(cooldown_seconds=20)
@@ -43,24 +39,33 @@ def run() -> None:
             self.status_text = tk.StringVar(value="Idle")
             self.timer_text = tk.StringVar(value="00:00")
             self.distraction_text = tk.StringVar(value="Distractions: 0")
-            self.content_status = tk.StringVar(value="")
+            self.content_status = tk.StringVar(value="Ready")
 
             self._build_ui()
             self.polling = False
 
         def _build_ui(self) -> None:
-            tk.Label(self.root, text="StudyBuddy AI", font=("Arial", 16, "bold")).pack(pady=8)
-            tk.Label(self.root, textvariable=self.timer_text, font=("Arial", 18)).pack(pady=4)
-            tk.Label(self.root, textvariable=self.status_text, font=("Arial", 12)).pack(pady=4)
-            tk.Label(self.root, textvariable=self.distraction_text, font=("Arial", 11)).pack(pady=2)
-            self.toggle_btn = tk.Button(self.root, text="Start Session", command=self.toggle_session)
-            self.toggle_btn.pack(pady=8)
+            card = tk.Frame(self.root, bg="white", bd=1, relief="solid", padx=16, pady=14)
+            card.pack(fill="both", expand=True, padx=18, pady=18)
 
-            self.notes_entry = tk.Entry(self.root, width=34)
-            self.notes_entry.pack(pady=3)
-            tk.Button(self.root, text="Save Note", command=self.save_note).pack(pady=2)
-            tk.Button(self.root, text="Make Flashcards", command=self.make_flashcards).pack(pady=2)
-            tk.Label(self.root, textvariable=self.content_status, font=("Arial", 9)).pack(pady=2)
+            tk.Label(card, text="StudyBuddy AI", font=("Helvetica", 20, "bold"), bg="white", fg="#1f2937").pack(pady=(0, 6))
+            tk.Label(card, textvariable=self.timer_text, font=("Helvetica", 28, "bold"), bg="white", fg="#111827").pack(pady=4)
+            tk.Label(card, textvariable=self.status_text, font=("Helvetica", 12), bg="white", fg="#2563eb").pack(pady=2)
+            tk.Label(card, textvariable=self.distraction_text, font=("Helvetica", 11), bg="white", fg="#374151").pack(pady=2)
+
+            self.toggle_btn = tk.Button(card, text="Start Session", command=self.toggle_session, bg="#2563eb", fg="white", relief="flat", padx=12, pady=6)
+            self.toggle_btn.pack(pady=10)
+
+            tk.Label(card, text="Notes / Flashcards", font=("Helvetica", 11, "bold"), bg="white", fg="#1f2937").pack(pady=(8, 2))
+            self.notes_entry = tk.Entry(card, width=46)
+            self.notes_entry.pack(pady=4)
+
+            row = tk.Frame(card, bg="white")
+            row.pack(pady=4)
+            tk.Button(row, text="Save Note", command=self.save_note, bg="#10b981", fg="white", relief="flat", padx=10).pack(side="left", padx=4)
+            tk.Button(row, text="Make Flashcards", command=self.make_flashcards, bg="#7c3aed", fg="white", relief="flat", padx=10).pack(side="left", padx=4)
+
+            tk.Label(card, textvariable=self.content_status, font=("Helvetica", 9), bg="white", fg="#6b7280").pack(pady=4)
 
         def save_note(self) -> None:
             text = self.notes_entry.get().strip()
@@ -69,7 +74,7 @@ def run() -> None:
                 return
             self.content.add_note(text)
             self.notes_entry.delete(0, tk.END)
-            self.content_status.set("Note saved to content_log.json")
+            self.content_status.set("✅ Note saved")
 
         def make_flashcards(self) -> None:
             text = self.notes_entry.get().strip()
@@ -79,7 +84,7 @@ def run() -> None:
             cards = self.provider.generate_flashcards(text)
             self.content.add_flashcards(text, cards)
             self.notes_entry.delete(0, tk.END)
-            self.content_status.set(f"Saved {len(cards)} flashcards")
+            self.content_status.set(f"✅ Saved {len(cards)} flashcards")
 
         def toggle_session(self) -> None:
             if not self.session.is_active():
@@ -89,16 +94,18 @@ def run() -> None:
 
         def start_session(self) -> None:
             self.session.start_session()
-            self.activity = ActivityTracker()
-            self.activity.start()
             try:
+                self.activity = ActivityTracker()
+                self.activity.start()
                 self.webcam = WebcamTracker()
             except Exception as exc:
                 self.status_text.set("Idle")
-                messagebox.showerror("Webcam Error", str(exc))
+                messagebox.showerror("Startup Error", str(exc))
+                self.activity = None
+                self.webcam = None
                 return
 
-            self.toggle_btn.config(text="Stop Session")
+            self.toggle_btn.config(text="Stop Session", bg="#dc2626")
             self.status_text.set("Focused")
             self.distraction_text.set("Distractions: 0")
             self.polling = True
@@ -114,7 +121,7 @@ def run() -> None:
                 self.activity.stop()
                 self.activity = None
 
-            self.toggle_btn.config(text="Start Session")
+            self.toggle_btn.config(text="Start Session", bg="#2563eb")
             self.status_text.set("Idle")
             if record and show_summary:
                 messagebox.showinfo("Session Saved", f"Duration: {record.duration_minutes} min\nDistractions: {record.distraction_events}")
@@ -135,7 +142,7 @@ def run() -> None:
                 if payload:
                     state, now_ts = payload
                     state.idle_seconds = self.activity.idle_seconds() if self.activity else 0.0
-                    distracted, reason = self.detector.update(state, now_ts)
+                    distracted, _ = self.detector.update(state, now_ts)
                     if distracted:
                         msg = self.alerts.trigger_alert()
                         if msg:

@@ -2,11 +2,6 @@ import random
 import threading
 import time
 
-try:
-    from playsound import playsound
-except ImportError:
-    playsound = None
-
 
 class AlertManager:
     def __init__(self, cooldown_seconds: int = 20, sound_file: str | None = None) -> None:
@@ -30,8 +25,13 @@ class AlertManager:
         self.last_alert_ts = time.time()
         message = random.choice(self.messages)
 
-        if self.sound_file and playsound:
-            threading.Thread(target=playsound, args=(self.sound_file,), daemon=True).start()
+        if self.sound_file:
+            try:
+                from playsound import playsound
+
+                threading.Thread(target=playsound, args=(self.sound_file,), daemon=True).start()
+            except Exception:
+                print(f"ALERT: {message}")
         else:
             print(f"ALERT: {message}")
 
