@@ -71,8 +71,8 @@ def run() -> None:
             self.polling = True
             self._tick()
 
-        def stop_session(self) -> None:
-            record = self.session.end_session()
+        def stop_session(self, show_summary: bool = True) -> None:
+            record = self.session.end_session() if self.session.is_active() else None
             self.polling = False
             if self.webcam:
                 self.webcam.close()
@@ -81,8 +81,12 @@ def run() -> None:
 
             self.toggle_btn.config(text="Start Session")
             self.status_text.set("Idle")
-            if record:
+            if record and show_summary:
                 messagebox.showinfo("Session Saved", f"Duration: {record.duration_minutes} min\nDistractions: {record.distraction_events}")
+
+        def on_close(self) -> None:
+            self.stop_session(show_summary=False)
+            self.root.destroy()
 
         def _tick(self) -> None:
             if not self.polling:
@@ -95,7 +99,7 @@ def run() -> None:
                 payload = self.webcam.get_state()
                 if payload:
                     state, now_ts = payload
-                    distracted, _ = self.detector.update(state, now_ts)
+                    distracted, reason = self.detector.update(state, now_ts)
                     if distracted:
                         msg = self.alerts.trigger_alert()
                         if msg:
@@ -105,10 +109,12 @@ def run() -> None:
                     else:
                         self.status_text.set("Focused")
                     self.webcam.preview_frame(self.status_text.get())
+                else:
+                    self.status_text.set("Distracted")
 
             self.root.after(500, self._tick)
 
     root = tk.Tk()
     app = StudyBuddyApp(root)
-    root.protocol("WM_DELETE_WINDOW", app.stop_session)
+    root.protocol("WM_DELETE_WINDOW", app.on_close)
     root.mainloop()
