@@ -82,3 +82,22 @@ python main.py
 
 - StudyBuddy intentionally avoids global keyboard/mouse hooks on macOS due to OS-level instability and permission issues.
 - Focus detection uses webcam/session signals only in this version.
+
+
+## Known Issues & Design Decisions
+
+- `pynput` was removed due to macOS `trace trap` crashes from OS-level input hooks.
+- Global input tracking was removed because it is unreliable for focus detection and can destabilize desktop runtimes.
+- Focus detection now uses webcam + session intent signals only.
+- Webcam initialization prefers OpenCV `CAP_AVFOUNDATION` on macOS, with fallback to default backend.
+- Past NumPy/OpenCV boolean ambiguity issues were avoided by explicit `None`/shape checks and guarded UI loop logic.
+- Tkinter + conda + native dependency conflicts can occur; design prioritizes graceful degradation and non-crashing behavior.
+- Stability and correctness were prioritized over OS-level tracking features.
+
+
+## v2 Architecture Split
+
+- `study_engine/`: session state, detection orchestration, focus score, app state model.
+- `sensors/`: hardware adapters (webcam service).
+- `ui/`: Tkinter renderer and controls only.
+- Engine is source of truth; UI renders engine state every 500ms.

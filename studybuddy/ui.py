@@ -5,11 +5,12 @@ def run() -> None:
     try:
         import tkinter as tk
         from tkinter import messagebox
+        import cv2
+        from PIL import Image, ImageTk
     except ModuleNotFoundError as exc:
         missing = getattr(exc, "name", "")
         if missing == "_tkinter" or "tkinter" in str(exc).lower():
             print("StudyBuddy AI requires a Python build that includes Tk support.")
-            print("Detected missing module: _tkinter")
             return
         raise
 
@@ -21,12 +22,14 @@ def run() -> None:
     from .session_manager import SessionManager
     from .webcam_tracker import WebcamTracker
 
+    STATUS_COLORS = {"Focused": "#16a34a", "Distracted": "#dc2626", "Idle": "#6b7280", "Camera unavailable": "#6b7280"}
+
     class StudyBuddyApp:
         def __init__(self, root: tk.Tk) -> None:
             self.root = root
             self.root.title("StudyBuddy AI")
-            self.root.geometry("460x420")
-            self.root.configure(bg="#f3f6fb")
+            self.root.geometry("520x700")
+            self.root.configure(bg="#f3f4f6")
 
             self.session = SessionManager()
             self.alerts = AlertManager(cooldown_seconds=20)
@@ -40,32 +43,48 @@ def run() -> None:
             self.timer_text = tk.StringVar(value="00:00")
             self.distraction_text = tk.StringVar(value="Distractions: 0")
             self.content_status = tk.StringVar(value="Ready")
-
-            self._build_ui()
+            self.status_label: tk.Label | None = None
+            self.video_label: tk.Label | None = None
             self.polling = False
 
+            self._build_ui()
+
         def _build_ui(self) -> None:
-            card = tk.Frame(self.root, bg="white", bd=1, relief="solid", padx=16, pady=14)
-            card.pack(fill="both", expand=True, padx=18, pady=18)
+            card = tk.Frame(self.root, bg="white", bd=1, relief="solid")
+            card.pack(fill="both", expand=True, padx=12, pady=8)
 
-            tk.Label(card, text="StudyBuddy AI", font=("Helvetica", 20, "bold"), bg="white", fg="#1f2937").pack(pady=(0, 6))
-            tk.Label(card, textvariable=self.timer_text, font=("Helvetica", 28, "bold"), bg="white", fg="#111827").pack(pady=4)
-            tk.Label(card, textvariable=self.status_text, font=("Helvetica", 12), bg="white", fg="#2563eb").pack(pady=2)
-            tk.Label(card, textvariable=self.distraction_text, font=("Helvetica", 11), bg="white", fg="#374151").pack(pady=2)
+            tk.Label(card, text="StudyBuddy AI", font=("Helvetica", 20, "bold"), bg="white").pack(padx=12, pady=8)
+            tk.Label(card, textvariable=self.timer_text, font=("Helvetica", 30, "bold"), bg="white").pack(padx=12, pady=8)
 
-            self.toggle_btn = tk.Button(card, text="Start Session", command=self.toggle_session, bg="#2563eb", fg="white", relief="flat", padx=12, pady=6)
-            self.toggle_btn.pack(pady=10)
+            self.status_label = tk.Label(card, textvariable=self.status_text, font=("Helvetica", 12), bg="white", fg=STATUS_COLORS["Idle"])
+            self.status_label.pack(padx=12, pady=8)
 
-            tk.Label(card, text="Notes / Flashcards", font=("Helvetica", 11, "bold"), bg="white", fg="#1f2937").pack(pady=(8, 2))
-            self.notes_entry = tk.Entry(card, width=46)
-            self.notes_entry.pack(pady=4)
+            video_frame = tk.Frame(card, bg="#e5e7eb", bd=1, relief="solid", width=320, height=240)
+            video_frame.pack(padx=12, pady=8)
+            video_frame.pack_propagate(False)
+            self.video_label = tk.Label(video_frame, bg="#000000", width=320, height=240, text="Camera unavailable", fg="white")
+            self.video_label.pack()
+
+            tk.Label(card, textvariable=self.distraction_text, font=("Helvetica", 11), bg="white").pack(padx=12, pady=8)
+
+            self.toggle_btn = tk.Button(card, text="Start Session", command=self.toggle_session, bg="#2563eb", fg="white", relief="flat", padx=12, pady=8)
+            self.toggle_btn.pack(padx=12, pady=8)
+
+            tk.Label(card, text="Notes", font=("Helvetica", 11, "bold"), bg="white").pack(padx=12, pady=8)
+            self.notes_entry = tk.Entry(card, width=48)
+            self.notes_entry.pack(padx=12, pady=8)
 
             row = tk.Frame(card, bg="white")
-            row.pack(pady=4)
-            tk.Button(row, text="Save Note", command=self.save_note, bg="#10b981", fg="white", relief="flat", padx=10).pack(side="left", padx=4)
-            tk.Button(row, text="Make Flashcards", command=self.make_flashcards, bg="#7c3aed", fg="white", relief="flat", padx=10).pack(side="left", padx=4)
+            row.pack(padx=12, pady=8)
+            tk.Button(row, text="Save Note", command=self.save_note, bg="#10b981", fg="white", relief="flat", padx=12, pady=8).pack(side="left", padx=6)
+            tk.Button(row, text="Make Flashcards", command=self.make_flashcards, bg="#7c3aed", fg="white", relief="flat", padx=12, pady=8).pack(side="left", padx=6)
 
-            tk.Label(card, textvariable=self.content_status, font=("Helvetica", 9), bg="white", fg="#6b7280").pack(pady=4)
+            tk.Label(card, textvariable=self.content_status, font=("Helvetica", 10), bg="white", fg="#6b7280").pack(padx=12, pady=8)
+
+        def _set_status(self, status: str) -> None:
+            self.status_text.set(status)
+            if self.status_label:
+                self.status_label.config(fg=STATUS_COLORS.get(status, "#6b7280"))
 
         def save_note(self) -> None:
             text = self.notes_entry.get().strip()
@@ -99,14 +118,14 @@ def run() -> None:
                 self.activity.start()
                 self.webcam = WebcamTracker()
             except Exception as exc:
-                self.status_text.set("Idle")
+                self._set_status("Camera unavailable")
                 messagebox.showerror("Startup Error", str(exc))
                 self.activity = None
                 self.webcam = None
                 return
 
             self.toggle_btn.config(text="Stop Session", bg="#dc2626")
-            self.status_text.set("Focused")
+            self._set_status("Focused")
             self.distraction_text.set("Distractions: 0")
             self.polling = True
             self._tick()
@@ -120,9 +139,10 @@ def run() -> None:
             if self.activity:
                 self.activity.stop()
                 self.activity = None
-
             self.toggle_btn.config(text="Start Session", bg="#2563eb")
-            self.status_text.set("Idle")
+            self._set_status("Idle")
+            if self.video_label:
+                self.video_label.config(image="", text="Camera unavailable")
             if record and show_summary:
                 messagebox.showinfo("Session Saved", f"Duration: {record.duration_minutes} min\nDistractions: {record.distraction_events}")
 
@@ -133,26 +153,41 @@ def run() -> None:
         def _tick(self) -> None:
             if not self.polling:
                 return
-            elapsed = self.session.elapsed_seconds()
-            mins, secs = divmod(elapsed, 60)
-            self.timer_text.set(f"{mins:02d}:{secs:02d}")
+            try:
+                elapsed = self.session.elapsed_seconds()
+                mins, secs = divmod(elapsed, 60)
+                self.timer_text.set(f"{mins:02d}:{secs:02d}")
 
-            if self.webcam:
-                payload = self.webcam.get_state()
-                if payload:
-                    state, now_ts = payload
+                if self.webcam:
+                    payload = self.webcam.get_state()
+                    if payload is None or payload[0] is None:
+                        self._set_status("Camera unavailable")
+                        if self.video_label:
+                            self.video_label.config(image="", text="Camera unavailable")
+                        self.root.after(500, self._tick)
+                        return
+
+                    frame, state, now_ts = payload
                     state.idle_seconds = self.activity.idle_seconds() if self.activity else 0.0
                     distracted, _ = self.detector.update(state, now_ts)
+
                     if distracted:
                         msg = self.alerts.trigger_alert()
                         if msg:
                             self.session.increment_distraction()
                             self.distraction_text.set(f"Distractions: {self.session.distraction_events}")
-                        self.status_text.set("Distracted")
+                        self._set_status("Distracted")
                     else:
-                        self.status_text.set("Focused")
-                else:
-                    self.status_text.set("Distracted")
+                        self._set_status("Focused")
+
+                    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    frame = cv2.resize(frame, (320, 240))
+                    img = ImageTk.PhotoImage(Image.fromarray(frame))
+                    if self.video_label:
+                        self.video_label.config(image=img, text="")
+                        self.video_label.image = img
+            except Exception:
+                self._set_status("Camera unavailable")
 
             self.root.after(500, self._tick)
 
